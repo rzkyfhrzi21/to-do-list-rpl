@@ -9,18 +9,20 @@ require_once 'env.php';
 date_default_timezone_set('Asia/Jakarta');
 $pukul = date('H:i A');
 
-// Deteksi server
-$host = $_SERVER['HTTP_HOST'];
+// Deteksi server (WEB vs CLI)
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';  // <-- FIX: kalau CLI, default localhost
+
 if ($host === 'localhost' || strpos($host, '127.0.0.1') !== false) {
-    $server     = 'localhost';
-    $username   = 'root';
-    $password   = '';
-    $database   = 'to-do-list';
+    $server = 'localhost';
+    $username = 'root';
+    $password = '';
+    $database = 'to-do-list';
 } else {
-    $server     = '';
-    $username   = '';
-    $password   = '';
-    $database   = '';
+    // kalau produksi, isi beneran (atau ambil dari env.php)
+    $server = $ENV_SERVER ?? '';
+    $username = $ENV_USERNAME ?? '';
+    $password = $ENV_PASSWORD ?? '';
+    $database = $ENV_DATABASE ?? '';
 }
 
 $koneksi = mysqli_connect($server, $username, $password, $database);
@@ -40,28 +42,28 @@ if (!function_exists('formatTanggalIndonesia')) {
     function formatTanggalIndonesia($tanggalInggris)
     {
         $namaHari = [
-            'Sunday'    => 'Minggu',
-            'Monday'    => 'Senin',
-            'Tuesday'   => 'Selasa',
+            'Sunday' => 'Minggu',
+            'Monday' => 'Senin',
+            'Tuesday' => 'Selasa',
             'Wednesday' => 'Rabu',
-            'Thursday'  => 'Kamis',
-            'Friday'    => 'Jumat',
-            'Saturday'  => 'Sabtu'
+            'Thursday' => 'Kamis',
+            'Friday' => 'Jumat',
+            'Saturday' => 'Sabtu'
         ];
 
         $namaBulan = [
-            'January'   => 'Januari',
-            'February'  => 'Februari',
-            'March'     => 'Maret',
-            'April'     => 'April',
-            'May'       => 'Mei',
-            'June'      => 'Juni',
-            'July'      => 'Juli',
-            'August'    => 'Agustus',
+            'January' => 'Januari',
+            'February' => 'Februari',
+            'March' => 'Maret',
+            'April' => 'April',
+            'May' => 'Mei',
+            'June' => 'Juni',
+            'July' => 'Juli',
+            'August' => 'Agustus',
             'September' => 'September',
-            'October'   => 'Oktober',
-            'November'  => 'November',
-            'December'  => 'Desember'
+            'October' => 'Oktober',
+            'November' => 'November',
+            'December' => 'Desember'
         ];
 
         $date = new DateTime($tanggalInggris);

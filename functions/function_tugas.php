@@ -1,14 +1,14 @@
 <?php
 require_once 'config.php';
 
-$sesi_id = $_SESSION['sesi_id'];
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-/* =======================
-   HELPER: NULL ATAU ANGKA
-======================= */
-function nullOrValue($val)
-{
-    return ($val === '' || $val === null) ? "NULL" : "'" . $val . "'";
+$sesi_id = $_SESSION['sesi_id'] ?? 0;
+if (!$sesi_id) {
+    header("Location: ../login.php");
+    exit;
 }
 
 /* =======================
@@ -16,30 +16,28 @@ function nullOrValue($val)
 ======================= */
 if (isset($_POST['btn_add'])) {
 
-    $nama  = trim($_POST['nama_tugas']);
-    $desk  = trim($_POST['deskripsi_tugas']);
-    $hari  = $_POST['id_hari'];
-    $waktu = $_POST['id_waktu'];
-    $ket   = $_POST['id_keterangan'] ?? null;
-
-    $ketSql = nullOrValue($ket);
+    $nama      = trim($_POST['nama_tugas']);
+    $desk      = trim($_POST['deskripsi_tugas']);
+    $tanggal   = $_POST['tanggal_deadline'];
+    $waktu     = $_POST['waktu_deadline'];
+    $keterangan = $_POST['keterangan'];
 
     mysqli_query($koneksi, "
         INSERT INTO tugas (
             nama_tugas,
             deskripsi_tugas,
+            tanggal_deadline,
+            waktu_deadline,
+            keterangan,
             id_pengguna,
-            id_hari,
-            id_waktu,
-            id_keterangan,
             status_tugas
         ) VALUES (
             '$nama',
             '$desk',
-            '$sesi_id',
-            '$hari',
+            '$tanggal',
             '$waktu',
-            $ketSql,
+            '$keterangan',
+            '$sesi_id',
             'belum'
         )
     ");
@@ -53,22 +51,20 @@ if (isset($_POST['btn_add'])) {
 ======================= */
 if (isset($_POST['btn_edit'])) {
 
-    $id    = $_POST['id_tugas'];
-    $nama  = trim($_POST['nama_tugas']);
-    $desk  = trim($_POST['deskripsi_tugas']);
-    $hari  = $_POST['id_hari'];
-    $waktu = $_POST['id_waktu'];
-    $ket   = $_POST['id_keterangan'] ?? null;
-
-    $ketSql = nullOrValue($ket);
+    $id        = $_POST['id_tugas'];
+    $nama      = trim($_POST['nama_tugas']);
+    $desk      = trim($_POST['deskripsi_tugas']);
+    $tanggal   = $_POST['tanggal_deadline'];
+    $waktu     = $_POST['waktu_deadline'];
+    $keterangan = $_POST['keterangan'];
 
     mysqli_query($koneksi, "
         UPDATE tugas SET
-            nama_tugas      = '$nama',
-            deskripsi_tugas = '$desk',
-            id_hari         = '$hari',
-            id_waktu        = '$waktu',
-            id_keterangan   = $ketSql
+            nama_tugas       = '$nama',
+            deskripsi_tugas  = '$desk',
+            tanggal_deadline = '$tanggal',
+            waktu_deadline   = '$waktu',
+            keterangan       = '$keterangan'
         WHERE id_tugas    = '$id'
         AND id_pengguna   = '$sesi_id'
     ");
@@ -86,8 +82,8 @@ if (isset($_POST['btn_delete'])) {
 
     mysqli_query($koneksi, "
         DELETE FROM tugas
-        WHERE id_tugas  = '$id'
-        AND id_pengguna = '$sesi_id'
+        WHERE id_tugas    = '$id'
+        AND id_pengguna   = '$sesi_id'
     ");
 
     header("Location: ../index.php?page=tugas");

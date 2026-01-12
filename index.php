@@ -153,12 +153,12 @@ $page = $_GET['page'] ?? 'dashboard'; // Default ke 'dashboard' jika tidak ada p
                                     <span><i class="bi bi-person-circle"></i> Profil</span>
                                 </a>
                             </li>
-
+                            <!-- 
                             <li class="menu-item">
                                 <a href="?page=master_data" class="menu-link">
                                     <span><i class="bi bi-sliders"></i> Master Data</span>
                                 </a>
-                            </li>
+                            </li> -->
 
                         </ul>
                     </div>

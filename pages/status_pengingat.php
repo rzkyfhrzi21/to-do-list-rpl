@@ -4,39 +4,35 @@ require_once 'functions/config.php';
 $sesi_id = $_SESSION['sesi_id'];
 
 /* =========================
-   WAKTU & HARI INI
+   WAKTU SEKARANG
 ========================= */
 $tanggalHariIni = date('Y-m-d');
 $jamSekarang    = date('H:i:s');
 
 /* =========================
-   QUERY PENGINGAT
-   - Hari ini
+   QUERY PENGINGAT (FINAL)
+   - Deadline hari ini
    - Belum selesai
-   - Jam sekarang < jam_selesai
+   - Jam deadline > sekarang
 ========================= */
 $qPengingat = mysqli_query($koneksi, "
     SELECT
-        t.id_tugas,
-        t.nama_tugas,
-        t.deskripsi_tugas,
-        h.nama_hari,
-        h.tanggal,
-        w.jam_mulai,
-        w.jam_selesai,
+        id_tugas,
+        nama_tugas,
+        deskripsi_tugas,
+        tanggal_deadline,
+        waktu_deadline,
         TIMESTAMPDIFF(
             MINUTE,
             NOW(),
-            CONCAT(h.tanggal, ' ', w.jam_selesai)
+            CONCAT(tanggal_deadline, ' ', waktu_deadline)
         ) AS sisa_menit
-    FROM tugas t
-    JOIN hari h ON t.id_hari = h.id_hari
-    JOIN waktu w ON t.id_waktu = w.id_waktu
-    WHERE t.id_pengguna = '$sesi_id'
-      AND t.status_tugas = 'belum'
-      AND h.tanggal = '$tanggalHariIni'
-      AND w.jam_selesai > '$jamSekarang'
-    ORDER BY w.jam_selesai ASC
+    FROM tugas
+    WHERE id_pengguna = '$sesi_id'
+      AND status_tugas = 'belum'
+      AND tanggal_deadline = '$tanggalHariIni'
+      AND waktu_deadline > '$jamSekarang'
+    ORDER BY waktu_deadline ASC
 ");
 ?>
 
@@ -79,13 +75,13 @@ $qPengingat = mysqli_query($koneksi, "
                 <hr class="my-2">
 
                 <p class="mb-1">
-                    <b>📅 Hari:</b>
-                    <?= $p['nama_hari']; ?> (<?= $p['tanggal']; ?>)
+                    <b>📅 Deadline:</b>
+                    <?= date('d M Y', strtotime($p['tanggal_deadline'])); ?>
                 </p>
 
                 <p class="mb-1">
                     <b>🕒 Waktu:</b>
-                    <?= $p['jam_mulai']; ?> - <?= $p['jam_selesai']; ?>
+                    <?= date('H:i', strtotime($p['waktu_deadline'])); ?>
                 </p>
 
                 <p class="mb-0">
@@ -105,9 +101,7 @@ $qPengingat = mysqli_query($koneksi, "
         const STORAGE_KEY = "hidden_pengingat_hari_ini";
         let hiddenNotifs = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 
-        /* =========================
-           SEMBUNYIKAN YANG SUDAH DITUTUP
-        ========================= */
+        // sembunyikan notif yg sudah ditutup
         document.querySelectorAll(".notif-card").forEach(card => {
             const id = card.dataset.notifId;
             if (hiddenNotifs.includes(id)) {
@@ -115,9 +109,7 @@ $qPengingat = mysqli_query($koneksi, "
             }
         });
 
-        /* =========================
-           TOMBOL CLOSE
-        ========================= */
+        // tombol close
         document.addEventListener("click", function(e) {
             if (e.target.classList.contains("notif-close")) {
 

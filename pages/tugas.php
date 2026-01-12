@@ -4,6 +4,10 @@ require_once 'functions/config.php';
 /* =========================
    SESSION
 ========================= */
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $sesi_id = $_SESSION['sesi_id'] ?? 0;
 if (!$sesi_id) {
     header("Location: login.php");
@@ -14,37 +18,44 @@ if (!$sesi_id) {
    FILTER
 ========================= */
 $filterStatus = $_GET['status'] ?? 'semua';
-$filterHari   = $_GET['id_hari'] ?? 'semua';
+$filterTanggal = $_GET['tanggal'] ?? ''; // tanggal dari kalender
 
 /* =========================
    HELPER URL
 ========================= */
-function buildUrl($status = null, $hari = null)
+function buildUrl($status = null, $tanggal = null)
 {
     $s = $_GET['status'] ?? 'semua';
-    $h = $_GET['id_hari'] ?? 'semua';
+    $t = $_GET['tanggal'] ?? '';
 
-    if ($status !== null) $s = $status;
-    if ($hari !== null)   $h = $hari;
+    if ($status !== null)
+        $s = $status;
+    if ($tanggal !== null)
+        $t = $tanggal;
 
-    return "?page=tugas&status=$s&id_hari=$h";
+    $t = urlencode($t);
+    return "?page=tugas&status=$s&tanggal=$t";
 }
 
 /* =========================
-   DATA MASTER
+   DATA MASTER (untuk modal tambah/edit)
 ========================= */
-$qHariFilter = mysqli_query($koneksi, "SELECT id_hari, nama_hari, tanggal FROM hari ORDER BY tanggal ASC");
-$qHariModal  = mysqli_query($koneksi, "SELECT id_hari, nama_hari, tanggal FROM hari ORDER BY tanggal ASC");
+$qHariModal = mysqli_query($koneksi, "SELECT id_hari, nama_hari, tanggal FROM hari ORDER BY tanggal ASC");
 $qWaktuModal = mysqli_query($koneksi, "SELECT id_waktu, jam_mulai, jam_selesai FROM waktu ORDER BY jam_mulai ASC");
-$qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FROM keterangan ORDER BY id_keterangan ASC");
+$qKetModal = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FROM keterangan ORDER BY id_keterangan ASC");
 ?>
 
 <div class="page-heading">
     <h3>Tugas</h3>
-    <p class="text-muted">Melihat dan mengelola tugas berdasarkan hari</p>
+    <p class="text-muted">Melihat dan mengelola tugas berdasarkan tanggal</p>
 
     <!-- =========================
-         PILIH HARI (FITUR BARU)
+         NOTIFIKASI (AUTO) - akan terisi via JS
+    ========================= -->
+    <div id="notifWrap" class="mb-3"></div>
+
+    <!-- =========================
+         FILTER TANGGAL (KALENDER)
     ========================= -->
     <div class="card mb-3">
         <div class="card-body">
@@ -53,25 +64,21 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
                 <input type="hidden" name="status" value="<?= htmlspecialchars($filterStatus) ?>">
 
                 <div class="col-md-4">
-                    <label class="form-label">Pilih Hari</label>
-                    <select name="id_hari" class="form-select">
-                        <option value="semua">-- Semua Hari --</option>
-                        <?php while ($h = mysqli_fetch_assoc($qHariFilter)): ?>
-                            <option value="<?= $h['id_hari'] ?>" <?= $filterHari == $h['id_hari'] ? 'selected' : '' ?>>
-                                <?= $h['nama_hari'] ?> (<?= $h['tanggal'] ?>)
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
+                    <label class="form-label">Pilih Tanggal</label>
+                    <input type="date" name="tanggal" class="form-control"
+                        value="<?= htmlspecialchars($filterTanggal) ?>">
                 </div>
 
                 <div class="col-md-2">
                     <button class="btn btn-primary w-100">Tampilkan</button>
                 </div>
 
-                <div class="col-md-6 text-end">
-                    <button type="button"
-                        class="btn btn-success"
-                        data-bs-toggle="modal"
+                <div class="col-md-2">
+                    <a href="?page=tugas&status=<?= urlencode($filterStatus) ?>" class="btn btn-light w-100">Reset</a>
+                </div>
+
+                <div class="col-md-4 text-end">
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal"
                         data-bs-target="#modalTambahTugas">
                         <i class="bi bi-plus-circle"></i> Tambah Tugas
                     </button>
@@ -84,9 +91,12 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
          FILTER STATUS
     ========================= -->
     <div class="btn-group mb-3">
-        <a href="<?= buildUrl('semua', null) ?>" class="btn <?= $filterStatus == 'semua' ? 'btn-primary' : 'btn-light' ?>">Semua</a>
-        <a href="<?= buildUrl('belum', null) ?>" class="btn <?= $filterStatus == 'belum' ? 'btn-secondary' : 'btn-light' ?>">Belum</a>
-        <a href="<?= buildUrl('selesai', null) ?>" class="btn <?= $filterStatus == 'selesai' ? 'btn-success' : 'btn-light' ?>">Selesai</a>
+        <a href="<?= buildUrl('semua', null) ?>"
+            class="btn <?= $filterStatus == 'semua' ? 'btn-primary' : 'btn-light' ?>">Semua</a>
+        <a href="<?= buildUrl('belum', null) ?>"
+            class="btn <?= $filterStatus == 'belum' ? 'btn-secondary' : 'btn-light' ?>">Belum</a>
+        <a href="<?= buildUrl('selesai', null) ?>"
+            class="btn <?= $filterStatus == 'selesai' ? 'btn-success' : 'btn-light' ?>">Selesai</a>
     </div>
 
     <!-- =========================
@@ -98,7 +108,7 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
                 <thead>
                     <tr>
                         <th>Nama Tugas</th>
-                        <th>Hari</th>
+                        <th>Tanggal Deadline</th>
                         <th>Waktu</th>
                         <th>Keterangan</th>
                         <th>Status</th>
@@ -110,34 +120,30 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
                     <?php
                     $sql = "
                         SELECT
-                            t.id_tugas,
-                            t.nama_tugas,
-                            t.deskripsi_tugas,
-                            t.status_tugas,
-                            h.nama_hari,
-                            h.tanggal,
-                            w.jam_mulai,
-                            w.jam_selesai,
-                            k.jenis_pekerjaan,
-                            t.id_hari,
-                            t.id_waktu,
-                            t.id_keterangan
-                        FROM tugas t
-                        JOIN hari h ON t.id_hari = h.id_hari
-                        JOIN waktu w ON t.id_waktu = w.id_waktu
-                        LEFT JOIN keterangan k ON t.id_keterangan = k.id_keterangan
-                        WHERE t.id_pengguna = '$sesi_id'
+                            id_tugas,
+                            nama_tugas,
+                            deskripsi_tugas,
+                            tanggal_deadline,
+                            waktu_deadline,
+                            keterangan,
+                            status_tugas
+                        FROM tugas
+                        WHERE id_pengguna = '$sesi_id'
                     ";
 
-                    if ($filterHari !== 'semua') {
-                        $sql .= " AND t.id_hari = '$filterHari'";
+                    /* FILTER TANGGAL */
+                    if (!empty($filterTanggal)) {
+                        $tgl = mysqli_real_escape_string($koneksi, $filterTanggal);
+                        $sql .= " AND tanggal_deadline = '$tgl'";
                     }
 
+                    /* FILTER STATUS */
                     if ($filterStatus !== 'semua') {
-                        $sql .= " AND t.status_tugas = '$filterStatus'";
+                        $st = mysqli_real_escape_string($koneksi, $filterStatus);
+                        $sql .= " AND status_tugas = '$st'";
                     }
 
-                    $sql .= " ORDER BY h.tanggal ASC, w.jam_mulai ASC";
+                    $sql .= " ORDER BY tanggal_deadline ASC, waktu_deadline ASC";
 
                     $data = mysqli_query($koneksi, $sql);
 
@@ -153,34 +159,47 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
                     <?php while ($row = mysqli_fetch_assoc($data)): ?>
                         <tr>
                             <td>
-                                <b><?= htmlspecialchars($row['nama_tugas']) ?></b><br>
-                                <small class="text-muted"><?= htmlspecialchars($row['deskripsi_tugas']) ?></small>
+                                <b><?= htmlspecialchars($row['nama_tugas']); ?></b><br>
+                                <small class="text-muted">
+                                    <?= htmlspecialchars($row['deskripsi_tugas']); ?>
+                                </small>
                             </td>
-                            <td><?= $row['nama_hari'] ?> (<?= $row['tanggal'] ?>)</td>
-                            <td><?= $row['jam_mulai'] ?> - <?= $row['jam_selesai'] ?></td>
-                            <td><?= $row['jenis_pekerjaan'] ?? '-' ?></td>
+
                             <td>
-                                <span class="badge <?= $row['status_tugas'] == 'selesai' ? 'bg-success' : 'bg-danger' ?>">
-                                    <?= ucfirst($row['status_tugas']) ?>
+                                <?= date('d M Y', strtotime($row['tanggal_deadline'])); ?>
+                            </td>
+
+                            <td>
+                                <?= date('H:i', strtotime($row['waktu_deadline'])); ?>
+                            </td>
+
+                            <td>
+                                <?= htmlspecialchars($row['keterangan']); ?>
+                            </td>
+
+                            <td>
+                                <span class="badge <?= $row['status_tugas'] === 'selesai' ? 'bg-success' : 'bg-danger'; ?>">
+                                    <?= ucfirst($row['status_tugas']); ?>
                                 </span>
                             </td>
+
                             <td>
                                 <button class="btn btn-sm btn-warning"
                                     data-bs-toggle="modal"
                                     data-bs-target="#modalEditTugas"
-                                    data-id="<?= $row['id_tugas'] ?>"
-                                    data-nama="<?= htmlspecialchars($row['nama_tugas']) ?>"
-                                    data-deskripsi="<?= htmlspecialchars($row['deskripsi_tugas']) ?>"
-                                    data-hari="<?= $row['id_hari'] ?>"
-                                    data-waktu="<?= $row['id_waktu'] ?>"
-                                    data-keterangan="<?= $row['id_keterangan'] ?>">
+                                    data-id="<?= $row['id_tugas']; ?>"
+                                    data-nama="<?= htmlspecialchars($row['nama_tugas']); ?>"
+                                    data-deskripsi="<?= htmlspecialchars($row['deskripsi_tugas']); ?>"
+                                    data-tanggal="<?= $row['tanggal_deadline']; ?>"
+                                    data-waktu="<?= $row['waktu_deadline']; ?>"
+                                    data-keterangan="<?= htmlspecialchars($row['keterangan']); ?>">
                                     Edit
                                 </button>
 
                                 <button class="btn btn-sm btn-danger"
                                     data-bs-toggle="modal"
                                     data-bs-target="#modalDeleteTugas"
-                                    data-id="<?= $row['id_tugas'] ?>">
+                                    data-id="<?= $row['id_tugas']; ?>">
                                     Hapus
                                 </button>
                             </td>
@@ -188,6 +207,7 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
                     <?php endwhile; ?>
 
                 </tbody>
+
             </table>
         </div>
     </div>
@@ -217,39 +237,22 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label>Hari</label>
-                        <select name="id_hari" class="form-select" required>
-                            <?php mysqli_data_seek($qHariModal, 0);
-                            while ($h = mysqli_fetch_assoc($qHariModal)): ?>
-                                <option value="<?= $h['id_hari'] ?>">
-                                    <?= $h['nama_hari'] ?> (<?= $h['tanggal'] ?>)
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
+                        <label>Tanggal</label>
+                        <input type="date" name="tanggal_deadline" class="form-select flatpickr mb-3" required>
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <label>Waktu</label>
-                        <select name="id_waktu" class="form-select" required>
-                            <?php mysqli_data_seek($qWaktuModal, 0);
-                            while ($w = mysqli_fetch_assoc($qWaktuModal)): ?>
-                                <option value="<?= $w['id_waktu'] ?>">
-                                    <?= $w['jam_mulai'] ?> - <?= $w['jam_selesai'] ?>
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
+                        <input type="date" name="waktu_deadline" class="form-control flatpickr-time-picker-24h" placeholder="Select time..">
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <label>Keterangan</label>
-                        <select name="id_keterangan" class="form-select">
+                        <select name="keterangan" class="form-select" required>
                             <option value="">-</option>
-                            <?php mysqli_data_seek($qKetModal, 0);
-                            while ($k = mysqli_fetch_assoc($qKetModal)): ?>
-                                <option value="<?= $k['id_keterangan'] ?>">
-                                    <?= $k['jenis_pekerjaan'] ?>
-                                </option>
-                            <?php endwhile; ?>
+                            <option value="Sebagian">Sebagian</option>
+                            <option value="Perbaikan">Perbaikan</option>
+                            <option value="Keseluruhan">Keseluruhan</option>
                         </select>
                     </div>
                 </div>
@@ -289,40 +292,32 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label>Hari</label>
-                        <select name="id_hari" id="edit-hari" class="form-select" required>
-                            <?php mysqli_data_seek($qHariModal, 0);
-                            while ($h = mysqli_fetch_assoc($qHariModal)): ?>
-                                <option value="<?= $h['id_hari'] ?>">
-                                    <?= $h['nama_hari'] ?> (<?= $h['tanggal'] ?>)
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
+                        <label>Tanggal</label>
+                        <input type="date"
+                            name="tanggal_deadline"
+                            id="edit-tanggal"
+                            class="form-select flatpickr mb-3"
+                            required>
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <label>Waktu</label>
-                        <select name="id_waktu" id="edit-waktu" class="form-select" required>
-                            <?php mysqli_data_seek($qWaktuModal, 0);
-                            while ($w = mysqli_fetch_assoc($qWaktuModal)): ?>
-                                <option value="<?= $w['id_waktu'] ?>">
-                                    <?= $w['jam_mulai'] ?> - <?= $w['jam_selesai'] ?>
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
+                        <input type="time"
+                            name="waktu_deadline"
+                            id="edit-waktu"
+                            class="form-control flatpickr-time-picker-24h"
+                            required>
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <label>Keterangan</label>
-                        <select name="id_keterangan" id="edit-keterangan" class="form-select">
-                            <option value="">-</option>
-                            <?php mysqli_data_seek($qKetModal, 0);
-                            while ($k = mysqli_fetch_assoc($qKetModal)): ?>
-                                <option value="<?= $k['id_keterangan'] ?>">
-                                    <?= $k['jenis_pekerjaan'] ?>
-                                </option>
-                            <?php endwhile; ?>
+                        <select name="keterangan" id="edit-keterangan" class="form-select">
+                            <option value="">- Pilih Keterangan -</option>
+                            <option value="Sebagian">Sebagian</option>
+                            <option value="Perbaikan">Perbaikan</option>
+                            <option value="Keseluruhan">Keseluruhan</option>
                         </select>
+
                     </div>
                 </div>
             </div>
@@ -362,23 +357,111 @@ $qKetModal   = mysqli_query($koneksi, "SELECT id_keterangan, jenis_pekerjaan FRO
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-
+        // isi modal edit
         document.querySelectorAll('[data-bs-target="#modalEditTugas"]').forEach(btn => {
             btn.addEventListener("click", function() {
-                document.getElementById('edit-id').value = this.dataset.id;
-                document.getElementById('edit-nama').value = this.dataset.nama;
-                document.getElementById('edit-deskripsi').value = this.dataset.deskripsi;
-                document.getElementById('edit-hari').value = this.dataset.hari;
-                document.getElementById('edit-waktu').value = this.dataset.waktu;
-                document.getElementById('edit-keterangan').value = this.dataset.keterangan || '';
+
+                document.getElementById('edit-id').value =
+                    this.dataset.id || '';
+
+                document.getElementById('edit-nama').value =
+                    this.dataset.nama || '';
+
+                document.getElementById('edit-deskripsi').value =
+                    this.dataset.deskripsi || '';
+
+                document.getElementById('edit-tanggal').value =
+                    this.dataset.tanggal || '';
+
+                document.getElementById('edit-waktu').value =
+                    this.dataset.waktu || '';
+
+                document.getElementById('edit-keterangan').value =
+                    this.dataset.keterangan || '';
             });
         });
 
+        // isi modal delete
         document.querySelectorAll('[data-bs-target="#modalDeleteTugas"]').forEach(btn => {
             btn.addEventListener("click", function() {
                 document.getElementById('delete-id').value = this.dataset.id;
             });
         });
 
+        // ====== NOTIF AUTO LOAD ======
+        async function loadNotif() {
+            const wrap = document.getElementById('notifWrap');
+            try {
+                const res = await fetch('/to-do-list/api/notifications.php');
+                const data = await res.json();
+
+                if (!data.length) {
+                    wrap.innerHTML = '';
+                    return;
+                }
+
+                wrap.innerHTML = `
+              <div class="alert alert-warning">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <b>Reminder (H-1)</b><br>
+                    <small>Ini akan muncul otomatis jika ada tugas yang deadline besok.</small>
+                  </div>
+                  <button class="btn btn-sm btn-outline-dark" id="btnReadAll">Tandai semua dibaca</button>
+                </div>
+                <hr class="my-2">
+                ${data.map(n => `
+                  <div class="mb-2 p-2 bg-white rounded border">
+                    <b>${escapeHtml(n.title)}</b><br>
+                    <div>${escapeHtml(n.message)}</div>
+                    <small class="text-muted">${n.created_at}</small><br>
+                    <button class="btn btn-sm btn-outline-secondary mt-2" onclick="markRead(${n.id})">Tandai dibaca</button>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+
+                document.getElementById('btnReadAll').onclick = () => markRead('all');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // helper escape agar aman dari XSS
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        // tandai dibaca
+        window.markRead = async function(id) {
+            try {
+                const form = new URLSearchParams();
+                form.append('id', id);
+
+                const res = await fetch('/to-do-list/api/notifications_read.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: form.toString()
+                });
+
+                const out = await res.json();
+                if (out && out.ok) {
+                    loadNotif();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        loadNotif();
+        setInterval(loadNotif, 15000);
     });
 </script>
