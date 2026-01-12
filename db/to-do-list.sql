@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 07, 2026 at 06:32 AM
+-- Generation Time: Jan 12, 2026 at 04:09 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -94,10 +94,10 @@ CREATE TABLE `tugas` (
   `id_tugas` bigint(20) NOT NULL,
   `nama_tugas` varchar(255) NOT NULL,
   `deskripsi_tugas` text DEFAULT NULL,
+  `waktu_deadline` time NOT NULL,
+  `tanggal_deadline` date NOT NULL,
+  `keterangan` varchar(255) NOT NULL,
   `id_pengguna` bigint(20) NOT NULL,
-  `id_waktu` bigint(20) NOT NULL,
-  `id_hari` bigint(20) NOT NULL,
-  `id_keterangan` bigint(20) DEFAULT NULL,
   `status_tugas` enum('belum','selesai') DEFAULT 'belum'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -105,10 +105,9 @@ CREATE TABLE `tugas` (
 -- Dumping data for table `tugas`
 --
 
-INSERT INTO `tugas` (`id_tugas`, `nama_tugas`, `deskripsi_tugas`, `id_pengguna`, `id_waktu`, `id_hari`, `id_keterangan`, `status_tugas`) VALUES
-(1, 'Kerjakan ERD & Relasi', 'Menyusun relasi tabel pengguna-tugas-waktu-hari-keterangan.', 1, 1, 1, 1, 'belum'),
-(7, 'Kerjakan ERD & Relasi1', 'aaaaaaaaaaaaaaaaaaaa', 1, 3, 3, 3, 'belum'),
-(9, 'Kerjakan ERD & Relasi1', '1111111111', 1, 2, 1, 3, 'belum');
+INSERT INTO `tugas` (`id_tugas`, `nama_tugas`, `deskripsi_tugas`, `waktu_deadline`, `tanggal_deadline`, `keterangan`, `id_pengguna`, `status_tugas`) VALUES
+(1, 'Tugas RPL', 'Mengerjakan Laporan RPL', '12:00:00', '2026-01-12', 'Sebagian', 1, 'belum'),
+(3, 'Tugas RPL 1', 'Tugas RPL 1', '13:00:00', '2026-01-12', 'Perbaikan', 1, 'belum');
 
 -- --------------------------------------------------------
 
@@ -160,11 +159,7 @@ ALTER TABLE `pengguna`
 -- Indexes for table `tugas`
 --
 ALTER TABLE `tugas`
-  ADD PRIMARY KEY (`id_tugas`),
-  ADD KEY `fk_tugas_waktu` (`id_waktu`),
-  ADD KEY `fk_tugas_hari` (`id_hari`),
-  ADD KEY `fk_tugas_keterangan` (`id_keterangan`),
-  ADD KEY `idx_tugas_pengguna_status` (`id_pengguna`,`status_tugas`);
+  ADD PRIMARY KEY (`id_tugas`);
 
 --
 -- Indexes for table `waktu`
@@ -198,26 +193,13 @@ ALTER TABLE `pengguna`
 -- AUTO_INCREMENT for table `tugas`
 --
 ALTER TABLE `tugas`
-  MODIFY `id_tugas` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id_tugas` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `waktu`
 --
 ALTER TABLE `waktu`
   MODIFY `id_waktu` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `tugas`
---
-ALTER TABLE `tugas`
-  ADD CONSTRAINT `fk_tugas_hari` FOREIGN KEY (`id_hari`) REFERENCES `hari` (`id_hari`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_tugas_keterangan` FOREIGN KEY (`id_keterangan`) REFERENCES `keterangan` (`id_keterangan`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_tugas_pengguna` FOREIGN KEY (`id_pengguna`) REFERENCES `pengguna` (`id_pengguna`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_tugas_waktu` FOREIGN KEY (`id_waktu`) REFERENCES `waktu` (`id_waktu`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
