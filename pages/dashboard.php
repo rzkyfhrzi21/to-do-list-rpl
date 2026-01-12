@@ -5,40 +5,31 @@ $sesi_id   = $_SESSION['sesi_id'];
 $sesi_nama = $_SESSION['sesi_nama'];
 
 /* =========================
-   TANGGAL & HARI HARI INI
+   TANGGAL HARI INI
 ========================= */
 $tanggalHariIni = date('Y-m-d');
-
-/* =========================
-   DATA HARI INI
-========================= */
-$qHariIni = mysqli_query($koneksi, "
-    SELECT id_hari, nama_hari, tanggal
-    FROM hari
-    WHERE tanggal = '$tanggalHariIni'
-    LIMIT 1
-");
-$hariIni = mysqli_fetch_assoc($qHariIni);
-$idHariIni = $hariIni['id_hari'] ?? null;
 
 /* =========================
    STATISTIK RINGKAS
 ========================= */
 $qTotalTugas = mysqli_query($koneksi, "
-    SELECT COUNT(*) AS total FROM tugas
+    SELECT COUNT(*) AS total
+    FROM tugas
     WHERE id_pengguna = '$sesi_id'
 ");
 $totalTugas = mysqli_fetch_assoc($qTotalTugas)['total'];
 
 $qSelesai = mysqli_query($koneksi, "
-    SELECT COUNT(*) AS total FROM tugas
+    SELECT COUNT(*) AS total
+    FROM tugas
     WHERE id_pengguna = '$sesi_id'
       AND status_tugas = 'selesai'
 ");
 $totalSelesai = mysqli_fetch_assoc($qSelesai)['total'];
 
 $qBelum = mysqli_query($koneksi, "
-    SELECT COUNT(*) AS total FROM tugas
+    SELECT COUNT(*) AS total
+    FROM tugas
     WHERE id_pengguna = '$sesi_id'
       AND status_tugas = 'belum'
 ");
@@ -47,44 +38,32 @@ $totalBelum = mysqli_fetch_assoc($qBelum)['total'];
 /* =========================
    TUGAS HARI INI
 ========================= */
-$qTugasHariIni = [];
-$totalHariIni = 0;
-
-if ($idHariIni) {
-    $qTugasHariIni = mysqli_query($koneksi, "
-        SELECT
-            t.nama_tugas,
-            t.deskripsi_tugas,
-            t.status_tugas,
-            w.jam_mulai,
-            w.jam_selesai,
-            k.jenis_pekerjaan
-        FROM tugas t
-        JOIN waktu w ON t.id_waktu = w.id_waktu
-        LEFT JOIN keterangan k ON t.id_keterangan = k.id_keterangan
-        WHERE t.id_pengguna = '$sesi_id'
-          AND t.id_hari = '$idHariIni'
-        ORDER BY w.jam_mulai ASC
-    ");
-    $totalHariIni = mysqli_num_rows($qTugasHariIni);
-}
+$qTugasHariIni = mysqli_query($koneksi, "
+    SELECT
+        nama_tugas,
+        deskripsi_tugas,
+        waktu_deadline,
+        keterangan,
+        status_tugas
+    FROM tugas
+    WHERE id_pengguna = '$sesi_id'
+      AND tanggal_deadline = '$tanggalHariIni'
+    ORDER BY waktu_deadline ASC
+");
+$totalHariIni = mysqli_num_rows($qTugasHariIni);
 
 /* =========================
    JADWAL TERDEKAT (3 DATA)
 ========================= */
 $qTerdekat = mysqli_query($koneksi, "
     SELECT
-        t.nama_tugas,
-        h.nama_hari,
-        h.tanggal,
-        w.jam_mulai,
-        w.jam_selesai
-    FROM tugas t
-    JOIN hari h ON t.id_hari = h.id_hari
-    JOIN waktu w ON t.id_waktu = w.id_waktu
-    WHERE t.id_pengguna = '$sesi_id'
-      AND h.tanggal >= '$tanggalHariIni'
-    ORDER BY h.tanggal ASC, w.jam_mulai ASC
+        nama_tugas,
+        tanggal_deadline,
+        waktu_deadline
+    FROM tugas
+    WHERE id_pengguna = '$sesi_id'
+      AND tanggal_deadline >= '$tanggalHariIni'
+    ORDER BY tanggal_deadline ASC, waktu_deadline ASC
     LIMIT 3
 ");
 ?>
@@ -139,9 +118,7 @@ $qTerdekat = mysqli_query($koneksi, "
         <div class="card-body">
             <h5>📅 Hari Ini</h5>
 
-            <?php if (!$hariIni): ?>
-                <p class="text-muted">Data hari belum tersedia.</p>
-            <?php elseif ($totalHariIni == 0): ?>
+            <?php if ($totalHariIni == 0): ?>
                 <span class="badge bg-info">Tidak Ada Tugas</span>
             <?php else: ?>
                 <span class="badge bg-success">Ada Tugas</span>
@@ -170,12 +147,12 @@ $qTerdekat = mysqli_query($koneksi, "
                             <div>
                                 <b><?= htmlspecialchars($t['nama_tugas']); ?></b><br>
                                 <small class="text-muted">
-                                    <?= $t['jam_mulai']; ?> - <?= $t['jam_selesai']; ?>
+                                    ⏰ <?= $t['waktu_deadline']; ?>
                                 </small><br>
 
-                                <?php if ($t['jenis_pekerjaan']): ?>
+                                <?php if (!empty($t['keterangan'])): ?>
                                     <span class="badge bg-secondary">
-                                        <?= $t['jenis_pekerjaan']; ?>
+                                        <?= htmlspecialchars($t['keterangan']); ?>
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -210,8 +187,8 @@ $qTerdekat = mysqli_query($koneksi, "
                         <li class="list-group-item">
                             <b><?= htmlspecialchars($j['nama_tugas']); ?></b><br>
                             <small class="text-muted">
-                                <?= $j['nama_hari']; ?> (<?= $j['tanggal']; ?>),
-                                <?= $j['jam_mulai']; ?> - <?= $j['jam_selesai']; ?>
+                                📅 <?= $j['tanggal_deadline']; ?> |
+                                ⏰ <?= $j['waktu_deadline']; ?>
                             </small>
                         </li>
                     <?php endwhile; ?>

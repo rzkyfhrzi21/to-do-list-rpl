@@ -19,12 +19,11 @@ $tanggalInput = $_GET['tanggal'] ?? date('Y-m-d');
    CARD STATISTIK
 ========================= */
 
-/* 1. Apakah ada tugas di tanggal terdekat */
+/* 1. Apakah ada tugas */
 $qAda = mysqli_query($koneksi, "
     SELECT COUNT(*) AS total
-    FROM tugas t
-    JOIN hari h ON t.id_hari = h.id_hari
-    WHERE t.id_pengguna = '$sesi_id'
+    FROM tugas
+    WHERE id_pengguna = '$sesi_id'
 ");
 $totalSemua = mysqli_fetch_assoc($qAda)['total'];
 $adaTugas = $totalSemua > 0 ? 'Ada' : 'Tidak Ada';
@@ -32,30 +31,27 @@ $adaTugas = $totalSemua > 0 ? 'Ada' : 'Tidak Ada';
 /* 2. Total tugas di tanggal terdekat */
 $qTotal = mysqli_query($koneksi, "
     SELECT COUNT(*) AS total
-    FROM tugas t
-    JOIN hari h ON t.id_hari = h.id_hari
-    WHERE t.id_pengguna = '$sesi_id'
-      AND h.tanggal = (
-          SELECT h2.tanggal
-          FROM tugas t2
-          JOIN hari h2 ON t2.id_hari = h2.id_hari
-          WHERE t2.id_pengguna = '$sesi_id'
-          ORDER BY ABS(DATEDIFF(h2.tanggal, '$tanggalInput')) ASC
+    FROM tugas
+    WHERE id_pengguna = '$sesi_id'
+      AND tanggal_deadline = (
+          SELECT tanggal_deadline
+          FROM tugas
+          WHERE id_pengguna = '$sesi_id'
+          ORDER BY ABS(DATEDIFF(tanggal_deadline, '$tanggalInput')) ASC
           LIMIT 1
       )
 ");
 $totalTugasTerdekat = mysqli_fetch_assoc($qTotal)['total'];
 
-/* 3. Hitung sisa hari menuju tanggal terdekat */
+/* 3. Hitung sisa hari ke deadline terdekat */
 $qTerdekat = mysqli_query($koneksi, "
-    SELECT h.tanggal
-    FROM tugas t
-    JOIN hari h ON t.id_hari = h.id_hari
-    WHERE t.id_pengguna = '$sesi_id'
-    ORDER BY ABS(DATEDIFF(h.tanggal, '$tanggalInput')) ASC
+    SELECT tanggal_deadline
+    FROM tugas
+    WHERE id_pengguna = '$sesi_id'
+    ORDER BY ABS(DATEDIFF(tanggal_deadline, '$tanggalInput')) ASC
     LIMIT 1
 ");
-$hariTerdekat = mysqli_fetch_assoc($qTerdekat)['tanggal'] ?? null;
+$hariTerdekat = mysqli_fetch_assoc($qTerdekat)['tanggal_deadline'] ?? null;
 
 $sisaHari = '-';
 if ($hariTerdekat) {
@@ -67,28 +63,23 @@ if ($hariTerdekat) {
 ========================= */
 $sql = "
     SELECT
-        t.nama_tugas,
-        t.deskripsi_tugas,
-        t.status_tugas,
-        h.nama_hari,
-        h.tanggal,
-        w.jam_mulai,
-        w.jam_selesai,
-        k.jenis_pekerjaan
-    FROM tugas t
-    JOIN hari h ON t.id_hari = h.id_hari
-    JOIN waktu w ON t.id_waktu = w.id_waktu
-    LEFT JOIN keterangan k ON t.id_keterangan = k.id_keterangan
-    WHERE t.id_pengguna = '$sesi_id'
-    ORDER BY ABS(DATEDIFF(h.tanggal, '$tanggalInput')) ASC,
-             w.jam_mulai ASC
+        nama_tugas,
+        deskripsi_tugas,
+        tanggal_deadline,
+        waktu_deadline,
+        keterangan,
+        status_tugas
+    FROM tugas
+    WHERE id_pengguna = '$sesi_id'
+    ORDER BY ABS(DATEDIFF(tanggal_deadline, '$tanggalInput')) ASC,
+             waktu_deadline ASC
 ";
 $data = mysqli_query($koneksi, $sql);
 ?>
 
 <div class="page-heading">
     <h3>Hari Ini / Tanggal Terdekat</h3>
-    <p class="text-muted">Pencarian tugas berdasarkan hari atau tanggal terdekat</p>
+    <p class="text-muted">Pencarian tugas berdasarkan tanggal deadline terdekat</p>
 
     <!-- =========================
          SEARCH TANGGAL
@@ -115,43 +106,29 @@ $data = mysqli_query($koneksi, $sql);
     ========================= -->
     <div class="row mb-4">
 
-        <!-- ADA TUGAS -->
         <div class="col-12 col-md-4">
             <div class="card">
-                <div class="card-body px-4 py-4-5">
-                    <div class="stats-icon purple mb-2">
-                        <i class="bi bi-calendar-check"></i>
-                    </div>
-                    <h6 class="text-muted font-semibold">Apakah Ada Tugas</h6>
-                    <h6 class="font-extrabold mb-0"><?= $adaTugas ?></h6>
+                <div class="card-body">
+                    <h6 class="text-muted">Apakah Ada Tugas</h6>
+                    <h5><?= $adaTugas ?></h5>
                 </div>
             </div>
         </div>
 
-        <!-- TOTAL TUGAS -->
         <div class="col-12 col-md-4">
             <div class="card">
-                <div class="card-body px-4 py-4-5">
-                    <div class="stats-icon blue mb-2">
-                        <i class="bi bi-list-task"></i>
-                    </div>
-                    <h6 class="text-muted font-semibold">Total Tugas (Tanggal Terdekat)</h6>
-                    <h6 class="font-extrabold mb-0"><?= $totalTugasTerdekat ?></h6>
+                <div class="card-body">
+                    <h6 class="text-muted">Total Tugas (Tanggal Terdekat)</h6>
+                    <h5><?= $totalTugasTerdekat ?></h5>
                 </div>
             </div>
         </div>
 
-        <!-- DEADLINE -->
         <div class="col-12 col-md-4">
             <div class="card">
-                <div class="card-body px-4 py-4-5">
-                    <div class="stats-icon red mb-2">
-                        <i class="bi bi-hourglass-split"></i>
-                    </div>
-                    <h6 class="text-muted font-semibold">Menuju Deadline Terdekat</h6>
-                    <h6 class="font-extrabold mb-0">
-                        <?= is_numeric($sisaHari) ? $sisaHari . ' Hari' : '-' ?>
-                    </h6>
+                <div class="card-body">
+                    <h6 class="text-muted">Menuju Deadline Terdekat</h6>
+                    <h5><?= is_numeric($sisaHari) ? $sisaHari . ' Hari' : '-' ?></h5>
                 </div>
             </div>
         </div>
@@ -167,9 +144,9 @@ $data = mysqli_query($koneksi, $sql);
                 <thead>
                     <tr>
                         <th>Nama Tugas</th>
-                        <th>Hari / Tanggal</th>
+                        <th>Tanggal</th>
                         <th>Waktu</th>
-                        <th>Jenis</th>
+                        <th>Keterangan</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -191,9 +168,9 @@ $data = mysqli_query($koneksi, $sql);
                                     <?= htmlspecialchars($row['deskripsi_tugas']) ?>
                                 </small>
                             </td>
-                            <td><?= $row['nama_hari'] ?>, <?= $row['tanggal'] ?></td>
-                            <td><?= $row['jam_mulai'] ?> - <?= $row['jam_selesai'] ?></td>
-                            <td><?= $row['jenis_pekerjaan'] ?? '-' ?></td>
+                            <td><?= $row['tanggal_deadline'] ?></td>
+                            <td><?= $row['waktu_deadline'] ?></td>
+                            <td><?= $row['keterangan'] ?: '-' ?></td>
                             <td>
                                 <span class="badge <?= $row['status_tugas'] == 'selesai' ? 'bg-success' : 'bg-danger' ?>">
                                     <?= ucfirst($row['status_tugas']) ?>
