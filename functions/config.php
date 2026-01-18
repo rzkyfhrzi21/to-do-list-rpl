@@ -19,10 +19,10 @@ if ($host === 'localhost' || strpos($host, '127.0.0.1') !== false) {
     $database = 'to-do-list';
 } else {
     // kalau produksi, isi beneran (atau ambil dari env.php)
-    $server = $ENV_SERVER ?? '';
-    $username = $ENV_USERNAME ?? '';
-    $password = $ENV_PASSWORD ?? '';
-    $database = $ENV_DATABASE ?? '';
+    $server = '';
+    $username = '';
+    $password = '';
+    $database = '';
 }
 
 $koneksi = mysqli_connect($server, $username, $password, $database);
