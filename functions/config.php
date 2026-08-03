@@ -10,22 +10,24 @@ date_default_timezone_set('Asia/Jakarta');
 $pukul = date('H:i A');
 
 // Deteksi server (WEB vs CLI)
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost';  // <-- FIX: kalau CLI, default localhost
+$host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
 
-if ($host === 'localhost' || strpos($host, '127.0.0.1') !== false) {
-    $server = 'localhost';
+if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false || strpos($host, '.test') !== false) {
+    $server = '127.0.0.1';
     $username = 'root';
     $password = '';
     $database = 'to-do-list';
+    $port = 3309;
 } else {
     // kalau produksi, isi beneran (atau ambil dari env.php)
     $server = '';
     $username = '';
     $password = '';
     $database = '';
+    $port = 3306;
 }
 
-$koneksi = mysqli_connect($server, $username, $password, $database);
+$koneksi = mysqli_connect($server, $username, $password, $database, $port);
 
 if (!$koneksi) {
     die('Koneksi gagal: ' . mysqli_connect_error());
